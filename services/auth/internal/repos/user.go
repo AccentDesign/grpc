@@ -48,7 +48,7 @@ func (r *UserRepository) getUserByToken(token string, tokenTable interface{}) (*
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("user not found: %s", token)
+			return nil, fmt.Errorf("user not found for token: %s", token)
 		}
 		return nil, fmt.Errorf("error fetching user: %v", result.Error)
 	}
@@ -70,8 +70,12 @@ func (r *UserRepository) CreateUser(email string, password string, firstName str
 		CreatedAt:  time.Time{},
 	}
 
+	if err := user.Validate(); err != nil {
+		return nil, err
+	}
+
 	if err := user.SetPassword(password); err != nil {
-		return nil, errors.New("error setting password")
+		return nil, err
 	}
 
 	if err := r.DB.Create(&user).Error; err != nil {
@@ -113,6 +117,10 @@ func (r *UserRepository) GetUserByVerifyToken(token string) (*models.User, error
 }
 
 func (r *UserRepository) UpdateUser(user *models.User) error {
+	if err := user.Validate(); err != nil {
+		return err
+	}
+
 	if result := r.DB.Save(user); result.Error != nil {
 		return result.Error
 	}
