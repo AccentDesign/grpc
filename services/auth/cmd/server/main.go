@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -71,8 +72,19 @@ func main() {
 		},
 	}
 
+	// log errors
+	errHandler := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		resp, err := handler(ctx, req)
+		if err != nil {
+			log.Printf("method: %q error: %s", info.FullMethod, err)
+		}
+		return resp, err
+	}
+
 	// create the server
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(errHandler),
+	)
 
 	// register the services
 	pb.RegisterAuthenticationServer(grpcServer, authService)
