@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = ""
+authors = ["Stuart <stuart@accentdesign.co.uk>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = {extras = ["all"], version = "^0.95.0"}
+grpcio = "^1.53.0"
+protobuf = "^4.22.1"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+  "app.migrations.*",
+  "protos.*"
+]
+ignore_errors = true
+
+[tool.black]
+line-length = 88
+exclude = '''
+  /(
+    migrations
+    | protos
+  )/
+'''
+
+[tool.isort]
+profile = "black"
+extend_skip = [
+  'migrations',
+  'protos'
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

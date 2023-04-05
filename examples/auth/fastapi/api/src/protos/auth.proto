@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+option go_package = "github.com/accentdesign/grpc/services/auth/pkg";
+
+package pkg.auth;
+
+service Authentication {
+  rpc BearerToken (BearerTokenRequest) returns (BearerTokenResponse) {}
+  rpc RevokeBearerToken (Token) returns (Empty) {}
+  rpc Register (RegisterRequest) returns (UserResponse) {}
+  rpc ResetPassword (ResetPasswordRequest) returns (Empty) {}
+  rpc ResetPasswordToken (ResetPasswordTokenRequest) returns (TokenWithEmail) {}
+  rpc User (Token) returns (UserResponse) {}
+  rpc UpdateUser (UpdateUserRequest) returns (UserResponse) {}
+  rpc VerifyUser (Token) returns (UserResponse) {}
+  rpc VerifyUserToken (VerifyUserTokenRequest) returns (TokenWithEmail) {}
+}
+
+message Empty {
+
+}
+
+message Token {
+  string token = 1;
+}
+
+message BearerTokenRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message BearerTokenResponse {
+  string access_token = 1;
+  string token_type = 2;
+  int32 expiry = 3;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string first_name = 3;
+  string last_name = 4;
+}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string password = 2;
+}
+
+message ResetPasswordTokenRequest {
+  string email = 1;
+}
+
+message UpdateUserRequest {
+  string token = 1;
+  string email = 2;
+  string password = 3;
+  string first_name = 4;
+  string last_name = 5;
+}
+
+message UserType {
+  string name = 1;
+  repeated string scopes = 2;
+}
+
+message UserResponse {
+  string id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  UserType user_type = 5;
+  bool is_active = 6;
+  bool is_verified = 7;
+}
+
+message VerifyUserTokenRequest {
+  string email = 1;
+}
+
+message TokenWithEmail {
+  string token = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+}
