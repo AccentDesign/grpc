@@ -16,14 +16,14 @@ class ForgotPassword(BaseModel):
 
 class ResetPassword(BaseModel):
     token: str
-    password: constr(min_length=6, max_length=120)
+    password: constr(min_length=6, max_length=79)
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     first_name: constr(min_length=1, max_length=120)
     last_name: constr(min_length=1, max_length=120)
-    password: constr(min_length=6, max_length=120)
+    password: constr(min_length=6, max_length=79)
 
 
 class UserType(BaseModel):
@@ -45,7 +45,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr]
     first_name: Optional[constr(min_length=1, max_length=120)]
     last_name: Optional[constr(min_length=1, max_length=120)]
-    password: Optional[constr(min_length=6, max_length=120)]
+    password: Optional[constr(min_length=6, max_length=79)]
 
 
 class VerifyRequest(BaseModel):
