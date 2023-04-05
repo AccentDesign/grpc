@@ -8,11 +8,6 @@ services:
         condition: service_healthy
     environment:
       DB_DNS: postgresql://postgres:password@db:5432/auth?sslmode=disable
-    command:
-      - "-port"
-      - "50051"
-      - "-bearer-duration"
-      - "8h"
 
   db:
     image: postgres:14
