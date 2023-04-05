@@ -28,6 +28,7 @@ type AuthenticationClient interface {
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*Empty, error)
 	ResetPasswordToken(ctx context.Context, in *ResetPasswordTokenRequest, opts ...grpc.CallOption) (*TokenWithEmail, error)
 	User(ctx context.Context, in *Token, opts ...grpc.CallOption) (*UserResponse, error)
+	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UserResponse, error)
 	VerifyUser(ctx context.Context, in *Token, opts ...grpc.CallOption) (*UserResponse, error)
 	VerifyUserToken(ctx context.Context, in *VerifyUserTokenRequest, opts ...grpc.CallOption) (*TokenWithEmail, error)
 }
@@ -94,6 +95,15 @@ func (c *authenticationClient) User(ctx context.Context, in *Token, opts ...grpc
 	return out, nil
 }
 
+func (c *authenticationClient) UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UserResponse, error) {
+	out := new(UserResponse)
+	err := c.cc.Invoke(ctx, "/pkg.auth.Authentication/UpdateUser", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authenticationClient) VerifyUser(ctx context.Context, in *Token, opts ...grpc.CallOption) (*UserResponse, error) {
 	out := new(UserResponse)
 	err := c.cc.Invoke(ctx, "/pkg.auth.Authentication/VerifyUser", in, out, opts...)
@@ -122,6 +132,7 @@ type AuthenticationServer interface {
 	ResetPassword(context.Context, *ResetPasswordRequest) (*Empty, error)
 	ResetPasswordToken(context.Context, *ResetPasswordTokenRequest) (*TokenWithEmail, error)
 	User(context.Context, *Token) (*UserResponse, error)
+	UpdateUser(context.Context, *UpdateUserRequest) (*UserResponse, error)
 	VerifyUser(context.Context, *Token) (*UserResponse, error)
 	VerifyUserToken(context.Context, *VerifyUserTokenRequest) (*TokenWithEmail, error)
 	mustEmbedUnimplementedAuthenticationServer()
@@ -148,6 +159,9 @@ func (UnimplementedAuthenticationServer) ResetPasswordToken(context.Context, *Re
 }
 func (UnimplementedAuthenticationServer) User(context.Context, *Token) (*UserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method User not implemented")
+}
+func (UnimplementedAuthenticationServer) UpdateUser(context.Context, *UpdateUserRequest) (*UserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
 }
 func (UnimplementedAuthenticationServer) VerifyUser(context.Context, *Token) (*UserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VerifyUser not implemented")
@@ -276,6 +290,24 @@ func _Authentication_User_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Authentication_UpdateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthenticationServer).UpdateUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pkg.auth.Authentication/UpdateUser",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthenticationServer).UpdateUser(ctx, req.(*UpdateUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Authentication_VerifyUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Token)
 	if err := dec(in); err != nil {
@@ -342,6 +374,10 @@ var Authentication_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "User",
 			Handler:    _Authentication_User_Handler,
+		},
+		{
+			MethodName: "UpdateUser",
+			Handler:    _Authentication_UpdateUser_Handler,
 		},
 		{
 			MethodName: "VerifyUser",

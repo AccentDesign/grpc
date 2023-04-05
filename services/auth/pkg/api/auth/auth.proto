@@ -11,6 +11,7 @@ service Authentication {
   rpc ResetPassword (ResetPasswordRequest) returns (Empty) {}
   rpc ResetPasswordToken (ResetPasswordTokenRequest) returns (TokenWithEmail) {}
   rpc User (Token) returns (UserResponse) {}
+  rpc UpdateUser (UpdateUserRequest) returns (UserResponse) {}
   rpc VerifyUser (Token) returns (UserResponse) {}
   rpc VerifyUserToken (VerifyUserTokenRequest) returns (TokenWithEmail) {}
 }
@@ -48,6 +49,14 @@ message ResetPasswordRequest {
 
 message ResetPasswordTokenRequest {
   string email = 1;
+}
+
+message UpdateUserRequest {
+  string token = 1;
+  string email = 2;
+  string password = 3;
+  string first_name = 4;
+  string last_name = 5;
 }
 
 message UserType {

@@ -8,6 +8,7 @@ An authentication service that implements:
 * ResetPassword
 * ResetPasswordToken
 * User
+* UpdateUser
 * VerifyUser
 * VerifyUserToken
 * UserTypes
@@ -70,3 +71,14 @@ Run with required env variables
     --env DB_DNS='postgresql://user:pass@host:5432/db?sslmode=disable' \
     --publish 50051:50051 \
     auth-service -reflection -port 50051
+
+## Regenerate gRPC Code
+
+    cd services/auth/pkg/api/auth
+
+    protoc \
+    --go_out=. \
+    --go_opt=paths=source_relative \
+    --go-grpc_out=. \
+    --go-grpc_opt=paths=source_relative \
+    auth.proto

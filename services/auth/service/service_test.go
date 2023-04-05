@@ -444,6 +444,124 @@ func (suite *TestSuite) TestAuthService_User() {
 	}, resp)
 }
 
+func (suite *TestSuite) TestAuthService_UpdateUser() {
+	teardown := suite.Setup()
+	defer teardown()
+
+	// create the repos
+	userRepo := &repos.UserRepository{DB: suite.db}
+	tokenRepo := &repos.TokenRepository{
+		DB: suite.db,
+		Config: &repos.TokenConfig{
+			BearerDuration: 3600 * time.Second,
+			ResetDuration:  3600 * time.Second,
+			VerifyDuration: 3600 * time.Second,
+		},
+	}
+
+	// create the auth service
+	authService := &service.AuthService{
+		UserRepo:  userRepo,
+		TokenRepo: tokenRepo,
+	}
+
+	ctx := context.Background()
+
+	user, err := suite.helpers.CreateTestUser()
+	suite.NoError(err)
+
+	// Fail cases
+	failTestCases := []struct {
+		desc          string
+		token         *models.AccessToken
+		request       *pb.UpdateUserRequest
+		expectedError error
+	}{
+		{"missing token", nil, &pb.UpdateUserRequest{}, status.Error(codes.InvalidArgument, "token is required")},
+		{"invalid token", nil, &pb.UpdateUserRequest{Token: "123"}, status.Error(codes.InvalidArgument, "invalid token")},
+		{"expired token", &models.AccessToken{UserId: user.ID, Token: "expired-token", ExpiresAt: time.Now().Add(-1 * time.Second)}, &pb.UpdateUserRequest{Token: "expired-token"}, status.Error(codes.InvalidArgument, "invalid token")},
+		{"short password", &models.AccessToken{UserId: user.ID, Token: "valid-one", ExpiresAt: time.Now().Add(1 * time.Minute)}, &pb.UpdateUserRequest{Token: "valid-one", Password: "short"}, status.Error(codes.InvalidArgument, "password must be between 6 and 72 characters in length")},
+		{"invalid email", &models.AccessToken{UserId: user.ID, Token: "valid-two", ExpiresAt: time.Now().Add(1 * time.Minute)}, &pb.UpdateUserRequest{Token: "valid-two", Email: "invalid"}, status.Error(codes.InvalidArgument, "invalid email format")},
+	}
+
+	for _, tc := range failTestCases {
+		if tc.token != nil {
+			tokenErr := suite.db.Create(tc.token).Error
+			suite.NoError(tokenErr)
+		}
+
+		suite.Run(tc.desc, func() {
+			resp, err := authService.UpdateUser(ctx, tc.request)
+			suite.EqualError(err, tc.expectedError.Error())
+			suite.Nil(resp)
+		})
+	}
+
+	// Success cases
+
+	token := &models.AccessToken{UserId: user.ID, Token: "another-token", ExpiresAt: time.Now().Add(10 * time.Minute)}
+	err = suite.db.Create(token).Error
+	suite.NoError(err)
+
+	successTestCases := []struct {
+		desc    string
+		request *pb.UpdateUserRequest
+	}{
+		{"only email", &pb.UpdateUserRequest{Token: "another-token", Email: "some@one.com"}},
+		{"only first name", &pb.UpdateUserRequest{Token: "another-token", FirstName: "Some"}},
+		{"only last name", &pb.UpdateUserRequest{Token: "another-token", LastName: "One"}},
+		{"only password", &pb.UpdateUserRequest{Token: "another-token", Password: "changed"}},
+		{"first and last name", &pb.UpdateUserRequest{Token: "another-token", FirstName: "Someone", LastName: "Else"}},
+		{"email and password", &pb.UpdateUserRequest{Token: "another-token", Email: "some@another.com", Password: "again?"}},
+	}
+
+	for _, tc := range successTestCases {
+
+		suite.Run(tc.desc, func() {
+			var originalUser models.User
+			err = suite.db.First(&originalUser, "id = ?", user.ID).Error
+
+			resp, err := authService.UpdateUser(ctx, tc.request)
+			suite.NoError(err)
+
+			var fetchedUser models.User
+			err = suite.db.Preload("UserType").Preload("UserType.Scopes").First(&fetchedUser, "id = ?", user.ID).Error
+
+			if tc.request.Email != "" {
+				suite.Equal(tc.request.Email, fetchedUser.Email)
+			} else {
+				suite.Equal(originalUser.Email, fetchedUser.Email)
+			}
+			if tc.request.FirstName != "" {
+				suite.Equal(tc.request.FirstName, fetchedUser.FirstName)
+			} else {
+				suite.Equal(originalUser.FirstName, fetchedUser.FirstName)
+			}
+			if tc.request.LastName != "" {
+				suite.Equal(tc.request.LastName, fetchedUser.LastName)
+			} else {
+				suite.Equal(originalUser.LastName, fetchedUser.LastName)
+			}
+			if tc.request.Password != "" {
+				suite.True(fetchedUser.VerifyPassword(tc.request.Password))
+			}
+
+			suite.Equal(&pb.UserResponse{
+				Id:        fetchedUser.ID.String(),
+				FirstName: fetchedUser.FirstName,
+				LastName:  fetchedUser.LastName,
+				Email:     fetchedUser.Email,
+				UserType: &pb.UserType{
+					Name:   fetchedUser.UserType.Name,
+					Scopes: fetchedUser.UserType.ScopeNames(),
+				},
+				IsActive:   fetchedUser.IsActive,
+				IsVerified: fetchedUser.IsVerified,
+			}, resp)
+		})
+	}
+}
+
 func (suite *TestSuite) TestAuthService_VerifyUser() {
 	teardown := suite.Setup()
 	defer teardown()

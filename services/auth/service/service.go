@@ -55,8 +55,8 @@ func (s *AuthService) BearerToken(_ context.Context, in *pb.BearerTokenRequest) 
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
 
-	user, userErr := s.UserRepo.GetUserByEmail(email)
-	if userErr != nil {
+	user, err := s.UserRepo.GetUserByEmail(email)
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid credentials")
 	}
 
@@ -64,9 +64,9 @@ func (s *AuthService) BearerToken(_ context.Context, in *pb.BearerTokenRequest) 
 		return nil, status.Error(codes.InvalidArgument, "invalid credentials")
 	}
 
-	token, tokenErr := s.TokenRepo.CreateAccessToken(user.ID)
-	if tokenErr != nil {
-		return nil, status.Error(codes.Internal, tokenErr.Error())
+	token, err := s.TokenRepo.CreateAccessToken(user.ID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	seconds := float64(s.TokenRepo.Config.BearerDuration) / float64(time.Second)
@@ -132,8 +132,8 @@ func (s *AuthService) ResetPassword(_ context.Context, in *pb.ResetPasswordReque
 
 	password := in.GetPassword()
 
-	user, userErr := s.UserRepo.GetUserByResetToken(token)
-	if userErr != nil {
+	user, err := s.UserRepo.GetUserByResetToken(token)
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid token")
 	}
 
@@ -167,14 +167,14 @@ func (s *AuthService) ResetPasswordToken(_ context.Context, in *pb.ResetPassword
 		return nil, status.Error(codes.InvalidArgument, "invalid email format")
 	}
 
-	user, userErr := s.UserRepo.GetUserByEmail(email)
-	if userErr != nil {
+	user, err := s.UserRepo.GetUserByEmail(email)
+	if err != nil {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
 
-	token, tokenErr := s.TokenRepo.CreateResetToken(user.ID)
-	if tokenErr != nil {
-		return nil, status.Error(codes.Internal, tokenErr.Error())
+	token, err := s.TokenRepo.CreateResetToken(user.ID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pb.TokenWithEmail{
@@ -195,9 +195,62 @@ func (s *AuthService) User(_ context.Context, in *pb.Token) (*pb.UserResponse, e
 		return nil, status.Error(codes.InvalidArgument, "token is required")
 	}
 
-	user, userErr := s.UserRepo.GetUserByAccessToken(token)
-	if userErr != nil {
+	user, err := s.UserRepo.GetUserByAccessToken(token)
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid token")
+	}
+
+	return s.userToResponse(user), nil
+}
+
+// UpdateUser updates a user based on the provided bearer token.
+// It takes in a context and a UpdateUserRequest, and returns a UserResponse and an error.
+func (s *AuthService) UpdateUser(_ context.Context, in *pb.UpdateUserRequest) (*pb.UserResponse, error) {
+	v := validator.New()
+
+	token := in.GetToken()
+	if v.IsEmpty(token) {
+		return nil, status.Error(codes.InvalidArgument, "token is required")
+	}
+
+	user, err := s.UserRepo.GetUserByAccessToken(token)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid token")
+	}
+
+	email := strings.TrimSpace(strings.ToLower(in.GetEmail()))
+	firstName := strings.TrimSpace(in.GetFirstName())
+	lastName := strings.TrimSpace(in.GetLastName())
+	password := in.GetPassword()
+
+	if email != "" {
+		user.Email = email
+	}
+	if firstName != "" {
+		user.FirstName = firstName
+	}
+	if lastName != "" {
+		user.LastName = lastName
+	}
+
+	if err := user.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if password != "" {
+		if err := user.SetPassword(password); err != nil {
+			var ve *models.UserValidateError
+			switch {
+			case errors.As(err, &ve):
+				return nil, status.Error(codes.InvalidArgument, err.Error())
+			default:
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+	}
+
+	if err := s.UserRepo.UpdateUser(user); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return s.userToResponse(user), nil
@@ -213,8 +266,8 @@ func (s *AuthService) VerifyUser(_ context.Context, in *pb.Token) (*pb.UserRespo
 		return nil, status.Error(codes.InvalidArgument, "token is required")
 	}
 
-	user, userErr := s.UserRepo.GetUserByVerifyToken(token)
-	if userErr != nil {
+	user, err := s.UserRepo.GetUserByVerifyToken(token)
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid token")
 	}
 
@@ -239,8 +292,8 @@ func (s *AuthService) VerifyUserToken(_ context.Context, in *pb.VerifyUserTokenR
 		return nil, status.Error(codes.InvalidArgument, "invalid email format")
 	}
 
-	user, userErr := s.UserRepo.GetUserByEmail(email)
-	if userErr != nil {
+	user, err := s.UserRepo.GetUserByEmail(email)
+	if err != nil {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
 
@@ -248,9 +301,9 @@ func (s *AuthService) VerifyUserToken(_ context.Context, in *pb.VerifyUserTokenR
 		return nil, status.Error(codes.FailedPrecondition, "user is already verified")
 	}
 
-	token, tokenErr := s.TokenRepo.CreateVerifyToken(user.ID)
-	if tokenErr != nil {
-		return nil, status.Error(codes.Internal, tokenErr.Error())
+	token, err := s.TokenRepo.CreateVerifyToken(user.ID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pb.TokenWithEmail{
