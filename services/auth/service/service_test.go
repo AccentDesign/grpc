@@ -225,27 +225,56 @@ func (suite *TestSuite) TestAuthService_Register() {
 	}
 
 	// Test valid registration
-	resp, err = authService.Register(ctx, &pb.RegisterRequest{Email: "test@test.com", Password: "password", FirstName: "Some", LastName: "One"})
-	suite.NoError(err)
+	successTestCases := []struct {
+		desc    string
+		request *pb.RegisterRequest
+		delete  bool
+	}{
+		{"good response", &pb.RegisterRequest{Email: "test@test.com", Password: "password", FirstName: "Some", LastName: "One"}, true},
+		{"lowercase email", &pb.RegisterRequest{Email: "TesT@teSt.com", Password: "password", FirstName: "Some", LastName: "One"}, true},
+		{"trim all", &pb.RegisterRequest{Email: " test@test.com   ", Password: "password", FirstName: " Some ", LastName: " One "}, false},
+	}
 
-	var fetchUser models.User
-	err = suite.db.Preload("UserType").Preload("UserType.Scopes").First(&fetchUser, "email = 'test@test.com'").Error
-	suite.NoError(err)
-	suite.Equal(&pb.UserResponse{
-		Id:        fetchUser.ID.String(),
-		FirstName: fetchUser.FirstName,
-		LastName:  fetchUser.LastName,
-		Email:     fetchUser.Email,
-		UserType: &pb.UserType{
-			Name:   fetchUser.UserType.Name,
-			Scopes: fetchUser.UserType.ScopeNames(),
-		},
-		IsActive:   fetchUser.IsActive,
-		IsVerified: fetchUser.IsVerified,
-	}, resp)
+	for _, tc := range successTestCases {
+		suite.Run(tc.desc, func() {
+			resp, err := authService.Register(ctx, tc.request)
+			suite.NoError(err)
+
+			var fetchUser models.User
+			err = suite.db.Preload("UserType").Preload("UserType.Scopes").First(&fetchUser, "email = 'test@test.com'").Error
+			suite.NoError(err)
+
+			suite.Equal(fetchUser.Email, "test@test.com")
+			suite.Equal(fetchUser.FirstName, "Some")
+			suite.Equal(fetchUser.LastName, "One")
+
+			suite.Equal(&pb.UserResponse{
+				Id:        fetchUser.ID.String(),
+				FirstName: fetchUser.FirstName,
+				LastName:  fetchUser.LastName,
+				Email:     fetchUser.Email,
+				UserType: &pb.UserType{
+					Name:   fetchUser.UserType.Name,
+					Scopes: fetchUser.UserType.ScopeNames(),
+				},
+				IsActive:   fetchUser.IsActive,
+				IsVerified: fetchUser.IsVerified,
+			}, resp)
+
+			if tc.delete {
+				err = suite.db.Delete(&fetchUser).Error
+				suite.NoError(err)
+			}
+		})
+	}
 
 	// Test valid registration, but user already registered
 	resp, err = authService.Register(ctx, &pb.RegisterRequest{Email: "test@test.com", Password: "password", FirstName: "Some", LastName: "One"})
+	suite.EqualError(err, status.Error(codes.AlreadyExists, "a user with this email already exists").Error())
+	suite.Nil(resp)
+
+	// Test valid registration, email manipulation safety
+	resp, err = authService.Register(ctx, &pb.RegisterRequest{Email: " TEST@TEST.COM ", Password: "password", FirstName: "Some", LastName: "One"})
 	suite.EqualError(err, status.Error(codes.AlreadyExists, "a user with this email already exists").Error())
 	suite.Nil(resp)
 }
