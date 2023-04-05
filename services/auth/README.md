@@ -59,19 +59,6 @@ Build the binary using GO locally, this will create an executable file.
 
     cd services/auth && go build -o bin/server cmd/server/main.go
 
-## Building in Docker
-
-Build the image using docker from the root directory:
-
-    docker build -t auth-service -f services/auth/Dockerfile .
-
-Run with required env variables
-
-    docker run \
-    --env DB_DNS='postgresql://user:pass@host:5432/db?sslmode=disable' \
-    --publish 50051:50051 \
-    auth-service -reflection -port 50051
-
 ## Regenerate gRPC Code
 
     cd services/auth/pkg/api/auth
