@@ -27,14 +27,13 @@ var (
 	bearerDuration   = flag.Duration("bearer-duration", 3600*time.Second, "Bearer token duration")
 	resetDuration    = flag.Duration("reset-duration", 3600*time.Second, "Reset token duration")
 	verifyDuration   = flag.Duration("verify-duration", 3600*time.Second, "Verify token duration")
-	gormDialector    = postgres.New(postgres.Config{DSN: os.Getenv("DB_DNS")})
-	gormConfig       = gorm.Config{}
+	dbDns            = os.Getenv("DB_DNS")
 )
 
 func displayHelp() {
 	flag.PrintDefaults()
 	fmt.Println("Environment variables:")
-	fmt.Println("  DB_DNS - Database dns e.g. postgresql://user:pass@host:5432/db?sslmode=disable")
+	fmt.Println("  DB_DNS - Database dns e.g. postgres://user:pass@host:5432/db?sslmode=disable")
 }
 
 func main() {
@@ -48,7 +47,7 @@ func main() {
 	}
 
 	// connect to the database
-	database, err := gorm.Open(gormDialector, &gormConfig)
+	database, err := gorm.Open(postgres.Open(dbDns), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to the database: %v", err)
 	}
