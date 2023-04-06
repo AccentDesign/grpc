@@ -17,15 +17,15 @@ import (
 )
 
 var (
-	ErrEmailAlreadyRegistered = status.Error(codes.AlreadyExists, "a user with this email already exists")
-	ErrEmailInvalid           = status.Error(codes.InvalidArgument, "invalid email format")
-	ErrEmailRequired          = status.Error(codes.InvalidArgument, "email is required")
-	ErrInvalidCredentials     = status.Error(codes.InvalidArgument, "invalid credentials")
-	ErrPasswordRequired       = status.Error(codes.InvalidArgument, "password is required")
-	ErrTokenInvalid           = status.Error(codes.InvalidArgument, "invalid token")
-	ErrTokenRequired          = status.Error(codes.InvalidArgument, "token is required")
-	ErrUserAlreadyVerified    = status.Error(codes.FailedPrecondition, "user is already verified")
-	ErrUserNotFound           = status.Error(codes.NotFound, "user not found")
+	ErrEmailAlreadyExists  = status.Error(codes.AlreadyExists, "a user with this email already exists")
+	ErrEmailInvalid        = status.Error(codes.InvalidArgument, "invalid email format")
+	ErrEmailRequired       = status.Error(codes.InvalidArgument, "email is required")
+	ErrInvalidCredentials  = status.Error(codes.InvalidArgument, "invalid credentials")
+	ErrPasswordRequired    = status.Error(codes.InvalidArgument, "password is required")
+	ErrTokenInvalid        = status.Error(codes.InvalidArgument, "invalid token")
+	ErrTokenRequired       = status.Error(codes.InvalidArgument, "token is required")
+	ErrUserAlreadyVerified = status.Error(codes.FailedPrecondition, "user is already verified")
+	ErrUserNotFound        = status.Error(codes.NotFound, "user not found")
 )
 
 func ErrInternal(err error) error {
@@ -131,7 +131,7 @@ func (s *AuthService) Register(_ context.Context, in *pb.RegisterRequest) (*pb.U
 		case errors.As(err, &ve):
 			return nil, ErrInvalidArgument(err)
 		case errors.Is(err, gorm.ErrDuplicatedKey):
-			return nil, ErrEmailAlreadyRegistered
+			return nil, ErrEmailAlreadyExists
 		default:
 			return nil, ErrInternal(err)
 		}
