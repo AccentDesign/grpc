@@ -16,6 +16,26 @@ import (
 	pb "github.com/accentdesign/grpc/services/auth/pkg/api/auth"
 )
 
+var (
+	ErrEmailAlreadyRegistered = status.Error(codes.AlreadyExists, "a user with this email already exists")
+	ErrEmailInvalid           = status.Error(codes.InvalidArgument, "invalid email format")
+	ErrEmailRequired          = status.Error(codes.InvalidArgument, "email is required")
+	ErrInvalidCredentials     = status.Error(codes.InvalidArgument, "invalid credentials")
+	ErrPasswordRequired       = status.Error(codes.InvalidArgument, "password is required")
+	ErrTokenInvalid           = status.Error(codes.InvalidArgument, "invalid token")
+	ErrTokenRequired          = status.Error(codes.InvalidArgument, "token is required")
+	ErrUserAlreadyVerified    = status.Error(codes.FailedPrecondition, "user is already verified")
+	ErrUserNotFound           = status.Error(codes.NotFound, "user not found")
+)
+
+func ErrInternal(err error) error {
+	return status.Error(codes.Internal, err.Error())
+}
+
+func ErrInvalidArgument(err error) error {
+	return status.Error(codes.InvalidArgument, err.Error())
+}
+
 type AuthService struct {
 	pb.UnimplementedAuthenticationServer
 	UserRepo  *repos.UserRepository
@@ -44,29 +64,29 @@ func (s *AuthService) BearerToken(_ context.Context, in *pb.BearerTokenRequest) 
 
 	email := strings.TrimSpace(strings.ToLower(in.GetEmail()))
 	if v.IsEmpty(email) {
-		return nil, status.Error(codes.InvalidArgument, "email is required")
+		return nil, ErrEmailRequired
 	}
 	if !v.Matches(email, validator.EmailRX) {
-		return nil, status.Error(codes.InvalidArgument, "invalid email format")
+		return nil, ErrEmailInvalid
 	}
 
 	password := in.GetPassword()
 	if v.IsEmpty(password) {
-		return nil, status.Error(codes.InvalidArgument, "password is required")
+		return nil, ErrPasswordRequired
 	}
 
 	user, err := s.UserRepo.GetUserByEmail(email)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid credentials")
+		return nil, ErrInvalidCredentials
 	}
 
 	if !user.VerifyPassword(password) {
-		return nil, status.Error(codes.InvalidArgument, "invalid credentials")
+		return nil, ErrInvalidCredentials
 	}
 
 	token, err := s.TokenRepo.CreateAccessToken(user.ID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, ErrInternal(err)
 	}
 
 	seconds := float64(s.TokenRepo.Config.BearerDuration) / float64(time.Second)
@@ -85,11 +105,11 @@ func (s *AuthService) RevokeBearerToken(_ context.Context, in *pb.Token) (*pb.Em
 
 	token := in.GetToken()
 	if v.IsEmpty(token) {
-		return nil, status.Error(codes.InvalidArgument, "token is required")
+		return nil, ErrTokenRequired
 	}
 
 	if err := s.TokenRepo.RevokeBearerToken(token); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, ErrInternal(err)
 	}
 
 	return &pb.Empty{}, nil
@@ -109,11 +129,11 @@ func (s *AuthService) Register(_ context.Context, in *pb.RegisterRequest) (*pb.U
 		var ve *models.UserValidateError
 		switch {
 		case errors.As(err, &ve):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
+			return nil, ErrInvalidArgument(err)
 		case errors.Is(err, gorm.ErrDuplicatedKey):
-			return nil, status.Error(codes.AlreadyExists, "a user with this email already exists")
+			return nil, ErrEmailAlreadyRegistered
 		default:
-			return nil, status.Error(codes.Internal, err.Error())
+			return nil, ErrInternal(err)
 		}
 	}
 
@@ -127,28 +147,28 @@ func (s *AuthService) ResetPassword(_ context.Context, in *pb.ResetPasswordReque
 
 	token := in.GetToken()
 	if v.IsEmpty(token) {
-		return nil, status.Error(codes.InvalidArgument, "token is required")
+		return nil, ErrTokenRequired
 	}
 
 	password := in.GetPassword()
 
 	user, err := s.UserRepo.GetUserByResetToken(token)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid token")
+		return nil, ErrTokenInvalid
 	}
 
 	if err := user.SetPassword(password); err != nil {
 		var ve *models.UserValidateError
 		switch {
 		case errors.As(err, &ve):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
+			return nil, ErrInvalidArgument(err)
 		default:
-			return nil, status.Error(codes.Internal, err.Error())
+			return nil, ErrInternal(err)
 		}
 	}
 
 	if err := s.UserRepo.UpdateUser(user); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, ErrInternal(err)
 	}
 
 	return &pb.Empty{}, nil
@@ -161,20 +181,20 @@ func (s *AuthService) ResetPasswordToken(_ context.Context, in *pb.ResetPassword
 
 	email := strings.TrimSpace(strings.ToLower(in.GetEmail()))
 	if v.IsEmpty(email) {
-		return nil, status.Error(codes.InvalidArgument, "email is required")
+		return nil, ErrEmailRequired
 	}
 	if !v.Matches(email, validator.EmailRX) {
-		return nil, status.Error(codes.InvalidArgument, "invalid email format")
+		return nil, ErrEmailInvalid
 	}
 
 	user, err := s.UserRepo.GetUserByEmail(email)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "user not found")
+		return nil, ErrUserNotFound
 	}
 
 	token, err := s.TokenRepo.CreateResetToken(user.ID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, ErrInternal(err)
 	}
 
 	return &pb.TokenWithEmail{
@@ -192,12 +212,12 @@ func (s *AuthService) User(_ context.Context, in *pb.Token) (*pb.UserResponse, e
 
 	token := in.GetToken()
 	if v.IsEmpty(token) {
-		return nil, status.Error(codes.InvalidArgument, "token is required")
+		return nil, ErrTokenRequired
 	}
 
 	user, err := s.UserRepo.GetUserByAccessToken(token)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid token")
+		return nil, ErrTokenInvalid
 	}
 
 	return s.userToResponse(user), nil
@@ -210,12 +230,12 @@ func (s *AuthService) UpdateUser(_ context.Context, in *pb.UpdateUserRequest) (*
 
 	token := in.GetToken()
 	if v.IsEmpty(token) {
-		return nil, status.Error(codes.InvalidArgument, "token is required")
+		return nil, ErrTokenRequired
 	}
 
 	user, err := s.UserRepo.GetUserByAccessToken(token)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid token")
+		return nil, ErrTokenInvalid
 	}
 
 	email := strings.TrimSpace(strings.ToLower(in.GetEmail()))
@@ -234,7 +254,7 @@ func (s *AuthService) UpdateUser(_ context.Context, in *pb.UpdateUserRequest) (*
 	}
 
 	if err := user.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ErrInvalidArgument(err)
 	}
 
 	if password != "" {
@@ -242,15 +262,15 @@ func (s *AuthService) UpdateUser(_ context.Context, in *pb.UpdateUserRequest) (*
 			var ve *models.UserValidateError
 			switch {
 			case errors.As(err, &ve):
-				return nil, status.Error(codes.InvalidArgument, err.Error())
+				return nil, ErrInvalidArgument(err)
 			default:
-				return nil, status.Error(codes.Internal, err.Error())
+				return nil, ErrInternal(err)
 			}
 		}
 	}
 
 	if err := s.UserRepo.UpdateUser(user); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, ErrInternal(err)
 	}
 
 	return s.userToResponse(user), nil
@@ -263,17 +283,17 @@ func (s *AuthService) VerifyUser(_ context.Context, in *pb.Token) (*pb.UserRespo
 
 	token := in.GetToken()
 	if v.IsEmpty(token) {
-		return nil, status.Error(codes.InvalidArgument, "token is required")
+		return nil, ErrTokenRequired
 	}
 
 	user, err := s.UserRepo.GetUserByVerifyToken(token)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid token")
+		return nil, ErrTokenInvalid
 	}
 
 	user.IsVerified = true
 	if err := s.UserRepo.UpdateUser(user); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, ErrInternal(err)
 	}
 
 	return s.userToResponse(user), nil
@@ -286,24 +306,24 @@ func (s *AuthService) VerifyUserToken(_ context.Context, in *pb.VerifyUserTokenR
 
 	email := strings.TrimSpace(strings.ToLower(in.GetEmail()))
 	if v.IsEmpty(email) {
-		return nil, status.Error(codes.InvalidArgument, "email is required")
+		return nil, ErrEmailRequired
 	}
 	if !v.Matches(email, validator.EmailRX) {
-		return nil, status.Error(codes.InvalidArgument, "invalid email format")
+		return nil, ErrEmailInvalid
 	}
 
 	user, err := s.UserRepo.GetUserByEmail(email)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "user not found")
+		return nil, ErrUserNotFound
 	}
 
 	if user.IsVerified {
-		return nil, status.Error(codes.FailedPrecondition, "user is already verified")
+		return nil, ErrUserAlreadyVerified
 	}
 
 	token, err := s.TokenRepo.CreateVerifyToken(user.ID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, ErrInternal(err)
 	}
 
 	return &pb.TokenWithEmail{
