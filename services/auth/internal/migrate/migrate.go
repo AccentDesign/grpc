@@ -1,8 +1,9 @@
 package migrate
 
 import (
-	models2 "github.com/accentdesign/grpc/services/auth/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/accentdesign/grpc/services/auth/internal/models"
 )
 
 type Migrator struct {
@@ -87,12 +88,12 @@ $$
 
 func (m *Migrator) MigrateDatabase() error {
 	if err := m.DB.AutoMigrate(
-		&models2.Scope{},
-		&models2.UserType{},
-		&models2.User{},
-		&models2.AccessToken{},
-		&models2.ResetToken{},
-		&models2.VerifyToken{},
+		&models.Scope{},
+		&models.UserType{},
+		&models.User{},
+		&models.AccessToken{},
+		&models.ResetToken{},
+		&models.VerifyToken{},
 	); err != nil {
 		return err
 	}
