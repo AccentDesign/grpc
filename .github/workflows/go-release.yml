@@ -23,4 +23,4 @@ jobs:
           goversion: "https://dl.google.com/go/go1.20.3.linux-amd64.tar.gz"
           project_path: "./services/auth/cmd/server"
           binary_name: "auth-server"
-          extra_files: ./services/auth/README.md
+          extra_files: LICENSE ./services/auth/README.md
