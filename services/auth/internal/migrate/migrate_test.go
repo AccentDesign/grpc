@@ -48,18 +48,3 @@ func (suite *TestSuite) TestMigrate_TablesCreated() {
 		suite.Equal(int64(1), count)
 	}
 }
-
-func (suite *TestSuite) TestMigrate_TriggersCreated() {
-	for _, tc := range []struct {
-		table   string
-		trigger string
-	}{
-		{"auth_users", "remove_auth_reset_tokens"},
-		{"auth_users", "remove_auth_verify_tokens"},
-	} {
-		var count int64
-		err := suite.db.Raw("SELECT COUNT(*) FROM pg_trigger t JOIN pg_class c ON t.tgrelid = c.oid WHERE t.tgname = ? AND c.relname = ?", tc.trigger, tc.table).Scan(&count).Error
-		suite.NoError(err)
-		suite.Equal(int64(1), count)
-	}
-}

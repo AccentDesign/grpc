@@ -1,11 +1,15 @@
 package models
 
 import (
-	"github.com/accentdesign/grpc/core/validator"
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+
+	"github.com/accentdesign/grpc/core/validator"
 )
 
 type UserValidateError struct {
@@ -34,20 +38,29 @@ func (*User) TableName() string {
 	return "auth_users"
 }
 
-func (u *User) Validate() error {
-	v := validator.New()
+func (u *User) BeforeUpdate(tx *gorm.DB) (err error) {
+	var oldUser User
+	if err := tx.Unscoped().Where("id = ?", u.ID).First(&oldUser).Error; err != nil {
+		return err
+	}
 
-	if v.IsEmpty(u.Email) {
-		return &UserValidateError{"email is required"}
+	tx.Statement.Context = context.WithValue(tx.Statement.Context, "oldUser", &oldUser)
+
+	return nil
+}
+
+func (u *User) AfterUpdate(tx *gorm.DB) (err error) {
+	oldUser, ok := tx.Statement.Context.Value("oldUser").(*User)
+	if !ok {
+		return fmt.Errorf("could not get old user from context")
 	}
-	if !v.Matches(u.Email, validator.EmailRX) {
-		return &UserValidateError{"invalid email format"}
+
+	if oldUser.HashedPassword != u.HashedPassword {
+		tx.Where("user_id = ?", u.ID).Delete(&ResetToken{})
 	}
-	if v.IsEmpty(u.FirstName) {
-		return &UserValidateError{"first_name is required"}
-	}
-	if v.IsEmpty(u.LastName) {
-		return &UserValidateError{"last_name is required"}
+
+	if u.IsVerified {
+		tx.Where("user_id = ?", u.ID).Delete(&VerifyToken{})
 	}
 
 	return nil
@@ -69,6 +82,25 @@ func (u *User) SetPassword(password string) error {
 	}
 
 	u.HashedPassword = string(hashedPassword)
+
+	return nil
+}
+
+func (u *User) Validate() error {
+	v := validator.New()
+
+	if v.IsEmpty(u.Email) {
+		return &UserValidateError{"email is required"}
+	}
+	if !v.Matches(u.Email, validator.EmailRX) {
+		return &UserValidateError{"invalid email format"}
+	}
+	if v.IsEmpty(u.FirstName) {
+		return &UserValidateError{"first_name is required"}
+	}
+	if v.IsEmpty(u.LastName) {
+		return &UserValidateError{"last_name is required"}
+	}
 
 	return nil
 }
