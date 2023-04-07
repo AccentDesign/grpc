@@ -8,9 +8,9 @@ Services hosted within Accent Design using Google Remote Procedure Call.
 
 A list of all the service built in this library:
 
-| Service                 | Description                       |
-|-------------------------|-----------------------------------|
-| [Auth](./services/auth) | Email and password authentication |
+| Service                 | Description                       |                                                                |
+|-------------------------|-----------------------------------|----------------------------------------------------------------|
+| [Auth](./services/auth) | Email and password authentication | [Dockerhub](https://hub.docker.com/r/accent/grpc-service-auth) |
 
 ## Tools
 
