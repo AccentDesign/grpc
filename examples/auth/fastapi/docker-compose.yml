@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   auth:
-    build: auth
+    image: accent/grpc-service-auth:latest
     depends_on:
       db:
         condition: service_healthy
