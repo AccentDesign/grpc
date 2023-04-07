@@ -22,7 +22,7 @@ type User struct {
 	HashedPassword string    `gorm:"type:varchar(1024);not null"`
 	FirstName      string    `gorm:"type:varchar(120);not null"`
 	LastName       string    `gorm:"type:varchar(120);not null"`
-	UserTypeId     uuid.UUID
+	UserTypeId     uuid.UUID `gorm:"not null"`
 	UserType       UserType
 	IsActive       bool `gorm:"type:boolean;not null;default:true"`
 	IsVerified     bool `gorm:"type:boolean;not null;default:false"`
