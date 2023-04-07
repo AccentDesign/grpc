@@ -3,7 +3,7 @@ FROM alpine:latest
 ARG TARGETOS
 ARG TARGETARCH
 ARG BASE_URL=https://github.com/accentdesign/grpc/releases/download
-ARG RELEASE=v0.0.1
+ARG RELEASE=v0.0.2
 
 ENV RELEASE_URL=${BASE_URL}/${RELEASE}/auth-server-${RELEASE}-${TARGETOS}-${TARGETARCH}.tar.gz
 
