@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/accentdesign/grpc/services/auth/helpers"
+	"github.com/accentdesign/grpc/services/auth/internal/migrate"
 	"github.com/accentdesign/grpc/testutils"
 )
 
@@ -20,8 +21,6 @@ type TestSuite struct {
 func (suite *TestSuite) SetupSuite() {
 	_, suite.db, suite.cleanup = testutils.SetupDockerDB()
 	suite.helpers = &helpers.TestHelpers{DB: suite.db}
-	err := suite.helpers.MigrateDatabase()
-	suite.NoError(err)
 }
 
 func (suite *TestSuite) TearDownSuite() {
@@ -32,7 +31,22 @@ func TestTestSuite(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }
 
-func (suite *TestSuite) TestMigrate_TablesCreated() {
+func (suite *TestSuite) TestMigrate_MigrateDatabase() {
+	migrator := &migrate.Migrator{DB: suite.db}
+
+	// test dry run
+	err := migrator.MigrateDatabaseDryRun()
+	suite.NoError(err)
+
+	var count int64
+	err = suite.db.Raw("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name like 'auth_%'").Scan(&count).Error
+	suite.NoError(err)
+	suite.Equal(int64(0), count)
+
+	// test real migration
+	err = migrator.MigrateDatabase()
+	suite.NoError(err)
+
 	for _, table := range []string{
 		"auth_scopes",
 		"auth_user_types",
