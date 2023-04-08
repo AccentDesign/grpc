@@ -27,6 +27,7 @@ var (
 	bearerDuration   = flag.Duration("bearer-duration", 3600*time.Second, "Bearer token duration")
 	resetDuration    = flag.Duration("reset-duration", 3600*time.Second, "Reset token duration")
 	verifyDuration   = flag.Duration("verify-duration", 3600*time.Second, "Verify token duration")
+	migrations       = flag.String("migrations", "on", `Migrations, "on", "dry-run" or "off", dry run will exit`)
 	dbDns            = os.Getenv("DB_DNS")
 )
 
@@ -54,8 +55,20 @@ func main() {
 
 	// migrate tables
 	migrator := &migrate.Migrator{DB: database}
-	if err := migrator.MigrateDatabase(); err != nil {
-		log.Fatalf("error migrating database: %v", err)
+	switch *migrations {
+	case "on":
+		if err := migrator.MigrateDatabase(); err != nil {
+			log.Fatalf("error migrating database: %v", err)
+		}
+	case "dry-run":
+		if err := migrator.MigrateDatabaseDryRun(); err != nil {
+			log.Fatalf("error migrating database: %v", err)
+		}
+		os.Exit(0)
+	case "off":
+		log.Print("Skipping migrations")
+	default:
+		log.Fatalf("invalid migrations option: %v", *migrations)
 	}
 
 	// create the auth service

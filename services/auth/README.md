@@ -36,14 +36,15 @@ Example user:
 
 Command line arguments the service accepts:
 
-| Argument                                | Description                                |
-|-----------------------------------------|--------------------------------------------|
-| `-h`, `--help`                          | Show help message and exit                 |
-| `-reflection`, `--reflection`           | Used to allow gRPC Web UI tools to connect |
-| `-port`, `--port`                       | Port to bind to                            |
-| `-bearer-duration`, `--bearer-duration` | Duration of bearer tokens (e.g. 8h)        |
-| `-reset-duration`, `--reset-duration`   | Duration of reset tokens (e.g. 1h)         |
-| `-verify-duration`, `--verify-duration` | Duration of verify tokens (e.g. 1h)        |
+| Argument                                | Description                                                           |
+|-----------------------------------------|-----------------------------------------------------------------------|
+| `-h`, `--help`                          | Show help message and exit                                            |
+| `-reflection`, `--reflection`           | Used to allow gRPC Web UI tools to connect                            |
+| `-port`, `--port`                       | Port to bind to                                                       |
+| `-bearer-duration`, `--bearer-duration` | Duration of bearer tokens (e.g. 8h)                                   |
+| `-reset-duration`, `--reset-duration`   | Duration of reset tokens (e.g. 1h)                                    |
+| `-verify-duration`, `--verify-duration` | Duration of verify tokens (e.g. 1h)                                   |
+| `-migrations`, `--migrations`           | Migrations, "on", "dry-run" or "off", dry run will exit, default "on" |
 
 ## Environment
 

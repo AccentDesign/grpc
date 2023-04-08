@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 
 	"github.com/accentdesign/grpc/services/auth/internal/models"
@@ -11,9 +12,22 @@ type Migrator struct {
 }
 
 func (m *Migrator) MigrateDatabase() error {
+	fmt.Println("Starting migrations")
 	if err := m.migrate(m.DB); err != nil {
 		return err
 	}
+	fmt.Println("Migrations complete")
+
+	return nil
+}
+
+func (m *Migrator) MigrateDatabaseDryRun() error {
+	fmt.Println("Dry Run: Starting migrations")
+	dryRunDB := m.DB.Session(&gorm.Session{DryRun: true, Logger: m.DB.Logger})
+	if err := m.migrate(dryRunDB); err != nil {
+		return err
+	}
+	fmt.Println("Dry Run: Migrations complete")
 
 	return nil
 }
