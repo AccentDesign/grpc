@@ -1,65 +1,66 @@
-from queue import Queue
-from typing import Generic, Type, TypedDict, TypeVar
+import asyncio
+from typing import TypedDict
 
 import grpc
-from grpc.aio import Channel
 
-from app.config import settings
 from protos.auth_pb2_grpc import AuthenticationStub
 
-StubType = TypeVar("StubType")
 
+class AuthGrpcClient(AuthenticationStub):
+    """
+    gRPC client for the authentication service with automatic retry
+    on UNAVAILABLE and DEADLINE_EXCEEDED status codes.
+    """
 
-class GrpcClientPool(Generic[StubType]):
-    def __init__(
-        self,
-        stub_class: Type[StubType],
-        host: str,
-        port: int,
-        pool_size: int = 10,
-    ):
-        self.stub_class: Type[StubType] = stub_class
-        self.host: str = host
-        self.port: int = port
-        self.pool_size: int = pool_size
-        self.pool = Queue(maxsize=pool_size)
+    def __init__(self, host, port, max_retries=3, retry_interval=1):
+        self._host = host
+        self._port = port
+        self._max_retries = max_retries
+        self._retry_interval = retry_interval
+        self._channel = grpc.aio.insecure_channel(f"{self._host}:{self._port}")
+        super().__init__(self._channel)
 
-    async def get_channel(self) -> Channel:
-        if self.pool.qsize() == 0:
-            return grpc.aio.insecure_channel(f"{self.host}:{self.port}")
-        else:
-            return self.pool.get_nowait()
-
-    def release_channel(self, channel) -> None:
-        if self.pool.qsize() < self.pool_size:
-            self.pool.put_nowait(channel)
-        else:
-            channel.close()
-
-    async def __aenter__(self) -> "GrpcClientPool":
+    async def __aenter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        while not self.pool.empty():
-            channel = self.pool.get_nowait()
-            await channel.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._channel.close()
 
-    async def __call__(self, method: str, *args, **kwargs):
-        channel = await self.get_channel()
+    async def _retry_on_unavailable(self, call, *args, **kwargs):
+        retries = 0
+        error = None
+        while retries <= self._max_retries:
+            try:
+                return await call(*args, **kwargs)
+            except grpc.aio.AioRpcError as e:
+                error = e
+                if error.code() in (
+                    grpc.StatusCode.UNAVAILABLE,
+                    grpc.StatusCode.DEADLINE_EXCEEDED,
+                ):
+                    retries += 1
+                    await asyncio.sleep(self._retry_interval)
+                else:
+                    raise
+        raise error
+
+    def __getattribute__(self, name):
         try:
-            stub = self.stub_class(channel)
-            return await getattr(stub, method)(*args, **kwargs)
-        finally:
-            self.release_channel(channel)
+            orig_attr = super().__getattribute__(name)
+        except AttributeError:
+            return super().__getattribute__(name)
 
+        if callable(orig_attr) and not name.startswith("_"):
 
-class AuthClient(GrpcClientPool[AuthenticationStub]):
-    def __init__(self):
-        super().__init__(AuthenticationStub, settings.auth_host, settings.auth_port)
+            async def wrapped_call(*args, **kwargs):
+                return await self._retry_on_unavailable(orig_attr, *args, **kwargs)
+
+            return wrapped_call
+        return orig_attr
 
 
 class GrpcClients(TypedDict, total=False):
-    auth: AuthClient
+    auth: AuthGrpcClient
 
 
 grpc_clients: GrpcClients = {}

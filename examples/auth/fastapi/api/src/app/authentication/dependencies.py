@@ -21,18 +21,17 @@ Token = Annotated[str, Depends(oauth2_scheme)]
 
 
 async def current_user(token: Token) -> UserRead:
-    async with grpc_clients["auth"] as client:
-        try:
-            request = auth_pb2.Token(token=token)
-            user = await client("User", request)
-            data = MessageToDict(
-                user,
-                including_default_value_fields=True,
-                preserving_proto_field_name=True,
-            )
-            return UserRead(**data)
-        except grpc.aio.AioRpcError as e:
-            raise Unauthorized() from e
+    try:
+        request = auth_pb2.Token(token=token)
+        user = await grpc_clients["auth"].User(request, timeout=5)
+        data = MessageToDict(
+            user,
+            including_default_value_fields=True,
+            preserving_proto_field_name=True,
+        )
+        return UserRead(**data)
+    except grpc.aio.AioRpcError as e:
+        raise Unauthorized() from e
 
 
 CurrentUser = Annotated[UserRead, Depends(current_user)]

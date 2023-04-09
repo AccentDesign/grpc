@@ -33,16 +33,15 @@ router = APIRouter()
     tags=["auth"],
 )
 async def login(data: Oauth2Form) -> BearerResponse:
-    async with grpc_clients["auth"] as client:
-        try:
-            request = auth_pb2.BearerTokenRequest(
-                email=data.username,
-                password=data.password,
-            )
-            response = await client("BearerToken", request)
-            return MessageToDict(response, preserving_proto_field_name=True)
-        except grpc.aio.AioRpcError as e:
-            raise IncorrectLoginCredentials() from e
+    try:
+        request = auth_pb2.BearerTokenRequest(
+            email=data.username,
+            password=data.password,
+        )
+        response = await grpc_clients["auth"].BearerToken(request, timeout=5)
+        return MessageToDict(response, preserving_proto_field_name=True)
+    except grpc.aio.AioRpcError as e:
+        raise IncorrectLoginCredentials() from e
 
 
 @router.post("/auth/token/logout", tags=["auth"])
@@ -50,7 +49,7 @@ async def logout(_: CurrentUser, token: Token) -> None:
     async with grpc_clients["auth"] as client:
         with contextlib.suppress(grpc.aio.AioRpcError):
             request = auth_pb2.Token(token=token)
-            await client("RevokeBearerToken", request)
+            await client.RevokeBearerToken(request, timeout=5)
 
 
 @router.post(
@@ -60,17 +59,16 @@ async def logout(_: CurrentUser, token: Token) -> None:
     tags=["auth"],
 )
 async def register(data: UserCreate) -> UserRead:
-    async with grpc_clients["auth"] as client:
-        try:
-            request = auth_pb2.RegisterRequest(**data.dict())
-            response = await client("Register", request)
-            return MessageToDict(
-                response,
-                preserving_proto_field_name=True,
-                including_default_value_fields=True,
-            )
-        except grpc.aio.AioRpcError as e:
-            raise BadRequest(e.details()) from e
+    try:
+        request = auth_pb2.RegisterRequest(**data.dict())
+        response = await grpc_clients["auth"].Register(request, timeout=5)
+        return MessageToDict(
+            response,
+            preserving_proto_field_name=True,
+            including_default_value_fields=True,
+        )
+    except grpc.aio.AioRpcError as e:
+        raise BadRequest(e.details()) from e
 
 
 @router.post(
@@ -79,17 +77,16 @@ async def register(data: UserCreate) -> UserRead:
     tags=["auth"],
 )
 async def verify_request(data: VerifyRequest) -> None:
-    async with grpc_clients["auth"] as client:
-        with contextlib.suppress(grpc.aio.AioRpcError):
-            request = auth_pb2.VerifyUserTokenRequest(email=data.email)
-            response = await client("VerifyUserToken", request)
+    with contextlib.suppress(grpc.aio.AioRpcError):
+        request = auth_pb2.VerifyUserTokenRequest(email=data.email)
+        response = await grpc_clients["auth"].VerifyUserToken(request, timeout=5)
 
-            print("Success: VerifyUserToken")
-            print("-" * 60)
-            print(response)
+        print("Success: VerifyUserToken")
+        print("-" * 60)
+        print(response)
 
-            # add a background task to send an email with the details
-            # DO NOT expose the token or the success/failure
+        # add a background task to send an email with the details
+        # DO NOT expose the token or the success/failure
 
 
 @router.post(
@@ -98,17 +95,16 @@ async def verify_request(data: VerifyRequest) -> None:
     tags=["auth"],
 )
 async def verify(data: VerifyToken) -> UserRead:
-    async with grpc_clients["auth"] as client:
-        try:
-            request = auth_pb2.Token(token=data.token)
-            response = await client("VerifyUser", request)
-            return MessageToDict(
-                response,
-                preserving_proto_field_name=True,
-                including_default_value_fields=True,
-            )
-        except grpc.aio.AioRpcError as e:
-            raise BadRequest(e.details()) from e
+    try:
+        request = auth_pb2.Token(token=data.token)
+        response = await grpc_clients["auth"].VerifyUser(request, timeout=5)
+        return MessageToDict(
+            response,
+            preserving_proto_field_name=True,
+            including_default_value_fields=True,
+        )
+    except grpc.aio.AioRpcError as e:
+        raise BadRequest(e.details()) from e
 
 
 @router.post(
@@ -117,17 +113,16 @@ async def verify(data: VerifyToken) -> UserRead:
     tags=["auth"],
 )
 async def forgot_password(data: ForgotPassword) -> None:
-    async with grpc_clients["auth"] as client:
-        with contextlib.suppress(grpc.aio.AioRpcError):
-            request = auth_pb2.ResetPasswordTokenRequest(email=data.email)
-            response = await client("ResetPasswordToken", request)
+    with contextlib.suppress(grpc.aio.AioRpcError):
+        request = auth_pb2.ResetPasswordTokenRequest(email=data.email)
+        response = await grpc_clients["auth"].ResetPasswordToken(request, timeout=5)
 
-            print("Success: ResetPasswordToken")
-            print("-" * 60)
-            print(response)
+        print("Success: ResetPasswordToken")
+        print("-" * 60)
+        print(response)
 
-            # add a background task to send an email with the details
-            # DO NOT expose the token or the success/failure
+        # add a background task to send an email with the details
+        # DO NOT expose the token or the success/failure
 
 
 @router.post(
@@ -135,15 +130,14 @@ async def forgot_password(data: ForgotPassword) -> None:
     tags=["auth"],
 )
 async def reset_password(data: ResetPassword) -> None:
-    async with grpc_clients["auth"] as client:
-        try:
-            request = auth_pb2.ResetPasswordRequest(
-                token=data.token,
-                password=data.password,
-            )
-            await client("ResetPassword", request)
-        except grpc.aio.AioRpcError as e:
-            raise BadRequest(e.details()) from e
+    try:
+        request = auth_pb2.ResetPasswordRequest(
+            token=data.token,
+            password=data.password,
+        )
+        await grpc_clients["auth"].ResetPassword(request, timeout=5)
+    except grpc.aio.AioRpcError as e:
+        raise BadRequest(e.details()) from e
 
 
 @router.get(
@@ -165,16 +159,15 @@ async def update_current_user(
     token: Token,
     _: CurrentActiveUser,
 ) -> UserRead:
-    async with grpc_clients["auth"] as client:
-        try:
-            request = auth_pb2.UpdateUserRequest(
-                token=token, **data.dict(exclude_unset=True)
-            )
-            response = await client("UpdateUser", request)
-            return MessageToDict(
-                response,
-                preserving_proto_field_name=True,
-                including_default_value_fields=True,
-            )
-        except grpc.aio.AioRpcError as e:
-            raise BadRequest(e.details()) from e
+    try:
+        request = auth_pb2.UpdateUserRequest(
+            token=token, **data.dict(exclude_unset=True)
+        )
+        response = await grpc_clients["auth"].UpdateUser(request, timeout=5)
+        return MessageToDict(
+            response,
+            preserving_proto_field_name=True,
+            including_default_value_fields=True,
+        )
+    except grpc.aio.AioRpcError as e:
+        raise BadRequest(e.details()) from e

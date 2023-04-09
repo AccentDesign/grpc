@@ -10,13 +10,14 @@ from app.authentication.dependencies import current_active_user
 from app.authentication.routes import router
 from app.authentication.schemas import UserRead
 from app.config import settings
-from app.grpc import AuthClient, grpc_clients
+from app.grpc import AuthGrpcClient, grpc_clients
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    grpc_clients["auth"] = AuthClient()
-    yield
+    async with AuthGrpcClient(settings.auth_host, settings.auth_port) as client:
+        grpc_clients["auth"] = client
+        yield
     grpc_clients.clear()
 
 
