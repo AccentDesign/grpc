@@ -16,6 +16,12 @@ A list of all the service built in this library:
 
 Some useful external tools:
 
+#### FastAPI Boilerplate
+
+A boilerplate written in Python, Pydantic and SQLAlchemy using the Auth service here.
+
+https://github.com/stuartaccent/fastapi-boilerplate
+
 #### gRPC Web UI
 
 Connect to a running gRPC service that has reflection enabled.
