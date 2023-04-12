@@ -8,9 +8,10 @@ Services hosted within Accent Design using Google Remote Procedure Call.
 
 A list of all the service built in this library:
 
-| Service                 | Description                       |                                                                |
-|-------------------------|-----------------------------------|----------------------------------------------------------------|
-| [Auth](./services/auth) | Email and password authentication | [Dockerhub](https://hub.docker.com/r/accent/grpc-service-auth) |
+| Service                   | Description                        |                                                                 |
+|---------------------------|------------------------------------|-----------------------------------------------------------------|
+| [Auth](./services/auth)   | Email and password authentication  | [Dockerhub](https://hub.docker.com/r/accent/grpc-service-auth)  |
+| [Email](./services/email) | SMTP email with file attachments   | [Dockerhub](https://hub.docker.com/r/accent/grpc-service-email) |
 
 ## Tools
 
@@ -18,7 +19,10 @@ Some useful external tools:
 
 #### FastAPI Boilerplate
 
-A boilerplate written in Python, Pydantic and SQLAlchemy using the Auth service here.
+A boilerplate written in Python, Pydantic and SQLAlchemy using the following services:
+
+* Auth
+* Email
 
 https://github.com/stuartaccent/fastapi-boilerplate
 

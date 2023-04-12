@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option go_package = "github.com/accentdesign/grpc/services/email/pkg";
+
+package pkg.email;
+
+service EmailService {
+  rpc SendEmail(stream EmailRequest) returns (EmailResponse);
+}
+
+message EmailRequest {
+  oneof payload {
+    EmailInfo email_info = 1;
+    Attachment attachment = 2;
+  }
+}
+
+message EmailInfo {
+  string from_address = 1;
+  string to_address = 2;
+  string subject = 3;
+  string plain_text = 4;
+  string html = 5;
+}
+
+message Attachment {
+  string filename = 1;
+  bytes data = 2;
+  string content_type = 3;
+}
+
+message EmailResponse {
+  bool success = 1;
+  string message = 2;
+}
