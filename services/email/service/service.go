@@ -10,6 +10,10 @@ import (
 	"net/smtp"
 	"strings"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/accentdesign/grpc/core/validator"
 	"github.com/accentdesign/grpc/services/email/internal"
 	pb "github.com/accentdesign/grpc/services/email/pkg/api/email"
 )
@@ -58,10 +62,14 @@ func (s *EmailServer) SetBoundaryGenerator(boundaryGenerator internal.BoundaryGe
 func (s *EmailServer) SendEmail(stream pb.EmailService_SendEmailServer) error {
 	var emailInfo *pb.EmailInfo
 	var attachments []*pb.Attachment
+	v := validator.New()
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
+			if emailInfo == nil {
+				return status.Error(codes.InvalidArgument, "EmailInfo not found in stream")
+			}
 			sendErr := s.send(emailInfo, attachments)
 			success := sendErr == nil
 			message := ""
@@ -81,11 +89,32 @@ func (s *EmailServer) SendEmail(stream pb.EmailService_SendEmailServer) error {
 
 		switch payload := req.Payload.(type) {
 		case *pb.EmailRequest_EmailInfo:
+			if v.IsEmpty(payload.EmailInfo.GetFromAddress()) {
+				return status.Error(codes.InvalidArgument, "from_address is required")
+			}
+			if v.IsEmpty(payload.EmailInfo.GetToAddress()) {
+				return status.Error(codes.InvalidArgument, "to_address is required")
+			}
+			if v.IsEmpty(payload.EmailInfo.GetSubject()) {
+				return status.Error(codes.InvalidArgument, "subject is required")
+			}
+			if v.IsEmpty(payload.EmailInfo.GetPlainText()) && v.IsEmpty(payload.EmailInfo.GetHtml()) {
+				return status.Error(codes.InvalidArgument, "plain_text or html is required")
+			}
 			emailInfo = payload.EmailInfo
 		case *pb.EmailRequest_Attachment:
+			if v.IsEmpty(payload.Attachment.GetFilename()) {
+				return status.Error(codes.InvalidArgument, "filename is required")
+			}
+			if len(payload.Attachment.GetData()) == 0 {
+				return status.Error(codes.InvalidArgument, "data is required")
+			}
+			if v.IsEmpty(payload.Attachment.GetContentType()) {
+				return status.Error(codes.InvalidArgument, "content_type is required")
+			}
 			attachments = append(attachments, payload.Attachment)
 		default:
-			return fmt.Errorf("unknown payload type received: %T", payload)
+			return status.Errorf(codes.InvalidArgument, "unknown payload received: %T", payload)
 		}
 	}
 }

@@ -13,9 +13,11 @@ import (
 	"text/template"
 
 	smtpmock "github.com/mocktools/go-smtp-mock/v2"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
 	pb "github.com/accentdesign/grpc/services/email/pkg/api/email"
@@ -32,7 +34,21 @@ func (g *MockBoundaryGenerator) GetBoundary() (string, error) {
 	return "mocked-id", nil
 }
 
-func setupMockServer() (*smtpmock.Server, *bufconn.Listener) {
+type TestSuite struct {
+	suite.Suite
+	emailServer *smtpmock.Server
+	grpcConn    *grpc.ClientConn
+}
+
+func (suite *TestSuite) SetupSuite() {
+	var err error
+	var lis *bufconn.Listener
+	suite.emailServer, lis = setupServer()
+	suite.grpcConn, err = setupClientConn(lis)
+	suite.NoError(err)
+}
+
+func setupServer() (*smtpmock.Server, *bufconn.Listener) {
 	mockServer := smtpmock.New(smtpmock.ConfigurationAttr{})
 	if err := mockServer.Start(); err != nil {
 		fmt.Println(err)
@@ -58,7 +74,7 @@ func setupMockServer() (*smtpmock.Server, *bufconn.Listener) {
 	return mockServer, lis
 }
 
-func setupGRPCClient(lis *bufconn.Listener) (*grpc.ClientConn, error) {
+func setupClientConn(lis *bufconn.Listener) (*grpc.ClientConn, error) {
 	conn, err := grpc.DialContext(context.Background(), "",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
@@ -77,22 +93,91 @@ func setupGRPCClient(lis *bufconn.Listener) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func TestSendEmail_WithAttachments(t *testing.T) {
-	mockServer, lis := setupMockServer()
-	defer mockServer.Stop()
+func TestTestSuite(t *testing.T) {
+	suite.Run(t, new(TestSuite))
+}
 
-	conn, err := setupGRPCClient(lis)
-	if err != nil {
-		t.Fatalf("Error setting up gRPC client: %v", err)
+func (suite *TestSuite) TestSendEmail_Validity() {
+	client := pb.NewEmailServiceClient(suite.grpcConn)
+
+	testErrorCases := []struct {
+		desc          string
+		info          *pb.EmailInfo
+		attachment    *pb.Attachment
+		expectedError error
+	}{
+		{"no email info", nil, &pb.Attachment{Filename: "test.txt", Data: []byte("123"), ContentType: "text/plain"}, status.Error(codes.InvalidArgument, "EmailInfo not found in stream")},
+		{"missing from address", &pb.EmailInfo{}, nil, status.Error(codes.InvalidArgument, "from_address is required")},
+		{"missing to address", &pb.EmailInfo{FromAddress: "from@mail.com"}, nil, status.Error(codes.InvalidArgument, "to_address is required")},
+		{"missing subject", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com"}, nil, status.Error(codes.InvalidArgument, "subject is required")},
+		{"missing html or plain", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi"}, nil, status.Error(codes.InvalidArgument, "plain_text or html is required")},
+		{"missing filename", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi", PlainText: "hi"}, &pb.Attachment{}, status.Error(codes.InvalidArgument, "filename is required")},
+		{"missing data", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi", PlainText: "hi"}, &pb.Attachment{Filename: "test.txt"}, status.Error(codes.InvalidArgument, "data is required")},
+		{"missing content type", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi", PlainText: "hi"}, &pb.Attachment{Filename: "test.txt", Data: []byte("123")}, status.Error(codes.InvalidArgument, "content_type is required")},
 	}
 
-	client := pb.NewEmailServiceClient(conn)
+	for _, tc := range testErrorCases {
+		suite.Run(tc.desc, func() {
+			stream, err := client.SendEmail(context.Background())
+			suite.NoError(err)
+
+			if tc.info != nil {
+				err = stream.Send(&pb.EmailRequest{Payload: &pb.EmailRequest_EmailInfo{EmailInfo: tc.info}})
+				suite.NoError(err)
+			}
+
+			if tc.attachment != nil {
+				err = stream.Send(&pb.EmailRequest{Payload: &pb.EmailRequest_Attachment{Attachment: tc.attachment}})
+				suite.NoError(err)
+			}
+
+			_, err = stream.CloseAndRecv()
+			suite.EqualError(err, tc.expectedError.Error())
+		})
+	}
+
+	testOkCases := []struct {
+		desc       string
+		info       *pb.EmailInfo
+		attachment *pb.Attachment
+	}{
+		{"plain", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi", PlainText: "Hi"}, nil},
+		{"html", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi", Html: "<p>Hi</p>"}, nil},
+		{"both", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi", PlainText: "Hi", Html: "<p>Hi</p>"}, nil},
+		{"with attachment", &pb.EmailInfo{FromAddress: "from@mail.com", ToAddress: "to@mail.com", Subject: "Hi", PlainText: "Hi", Html: "<p>Hi</p>"}, &pb.Attachment{Filename: "test.txt", Data: []byte("123"), ContentType: "text/plain"}},
+	}
+
+	for _, tc := range testOkCases {
+		suite.Run(tc.desc, func() {
+			stream, err := client.SendEmail(context.Background())
+			suite.NoError(err)
+
+			if tc.info != nil {
+				err = stream.Send(&pb.EmailRequest{Payload: &pb.EmailRequest_EmailInfo{EmailInfo: tc.info}})
+				suite.NoError(err)
+			}
+
+			if tc.attachment != nil {
+				err = stream.Send(&pb.EmailRequest{Payload: &pb.EmailRequest_Attachment{Attachment: tc.attachment}})
+				suite.NoError(err)
+			}
+
+			_, err = stream.CloseAndRecv()
+			suite.NoError(err)
+		})
+	}
+}
+
+func (suite *TestSuite) TestSendEmail_WithAttachments() {
+	client := pb.NewEmailServiceClient(suite.grpcConn)
 
 	// Send a test email.
 	var buf bytes.Buffer
 	encoder := base64.NewEncoder(base64.StdEncoding, &buf)
-	encoder.Write([]byte("This is a test attachment"))
-	encoder.Close()
+	_, err := encoder.Write([]byte("This is a test attachment"))
+	suite.NoError(err)
+	err = encoder.Close()
+	suite.NoError(err)
 
 	emailRequest1 := &pb.EmailRequest{
 		Payload: &pb.EmailRequest_EmailInfo{
@@ -116,32 +201,26 @@ func TestSendEmail_WithAttachments(t *testing.T) {
 	}
 
 	stream, err := client.SendEmail(context.Background())
-	if err != nil {
-		t.Fatalf("Error sending email: %v", err)
-	}
+	suite.NoError(err)
 
-	if err := stream.Send(emailRequest1); err != nil {
-		t.Fatalf("Error sending email request: %v", err)
-	}
+	err = stream.Send(emailRequest1)
+	suite.NoError(err)
 
-	if err := stream.Send(emailRequest2); err != nil {
-		t.Fatalf("Error sending email request: %v", err)
-	}
+	err = stream.Send(emailRequest2)
+	suite.NoError(err)
 
 	response, err := stream.CloseAndRecv()
-	if err != nil {
-		t.Fatalf("Error receiving response: %v", err)
-	}
+	suite.NoError(err)
 
 	// Check that the email was sent successfully.
-	assert.True(t, response.Success)
-	assert.Equal(t, "Email sent successfully", response.Message)
+	suite.True(response.Success)
+	suite.Equal("Email sent successfully", response.Message)
 
 	// Verify that the email was sent correctly.
-	messages := mockServer.Messages()
+	messages := suite.emailServer.Messages()
 	message := last(messages)
 
-	assert.Equal(t, "MAIL FROM:<from@example.com>", message.MailfromRequest())
+	suite.Equal("MAIL FROM:<from@example.com>", message.MailfromRequest())
 
 	data := map[string]interface{}{
 		"from":         "from@example.com",
@@ -191,20 +270,12 @@ Content-Disposition: attachment; filename={{.file_name}}
 		panic(err)
 	}
 
-	assert.Equal(t, expectedMsg.String(), message.MsgRequest())
+	suite.Equal(expectedMsg.String(), message.MsgRequest())
 
 }
 
-func TestSendEmail_WithoutAttachments(t *testing.T) {
-	mockServer, lis := setupMockServer()
-	defer mockServer.Stop()
-
-	conn, err := setupGRPCClient(lis)
-	if err != nil {
-		t.Fatalf("Error setting up gRPC client: %v", err)
-	}
-
-	client := pb.NewEmailServiceClient(conn)
+func (suite *TestSuite) TestSendEmail_WithoutAttachments() {
+	client := pb.NewEmailServiceClient(suite.grpcConn)
 
 	// Send a test email.
 	emailRequest1 := &pb.EmailRequest{
@@ -220,28 +291,23 @@ func TestSendEmail_WithoutAttachments(t *testing.T) {
 	}
 
 	stream, err := client.SendEmail(context.Background())
-	if err != nil {
-		t.Fatalf("Error sending email: %v", err)
-	}
+	suite.NoError(err)
 
-	if err := stream.Send(emailRequest1); err != nil {
-		t.Fatalf("Error sending email request: %v", err)
-	}
+	err = stream.Send(emailRequest1)
+	suite.NoError(err)
 
 	response, err := stream.CloseAndRecv()
-	if err != nil {
-		t.Fatalf("Error receiving response: %v", err)
-	}
+	suite.NoError(err)
 
 	// Check that the email was sent successfully.
-	assert.True(t, response.Success)
-	assert.Equal(t, "Email sent successfully", response.Message)
+	suite.True(response.Success)
+	suite.Equal("Email sent successfully", response.Message)
 
 	// Verify that the email was sent correctly.
-	messages := mockServer.Messages()
+	messages := suite.emailServer.Messages()
 	message := last(messages)
 
-	assert.Equal(t, "MAIL FROM:<from@example.com>", message.MailfromRequest())
+	suite.Equal("MAIL FROM:<from@example.com>", message.MailfromRequest())
 
 	data := map[string]interface{}{
 		"from":    "from@example.com",
@@ -281,20 +347,12 @@ Content-Type: text/html; charset=utf-8
 		panic(err)
 	}
 
-	assert.Equal(t, expectedMsg.String(), message.MsgRequest())
+	suite.Equal(expectedMsg.String(), message.MsgRequest())
 
 }
 
-func TestSendEmail_PlainOnly(t *testing.T) {
-	mockServer, lis := setupMockServer()
-	defer mockServer.Stop()
-
-	conn, err := setupGRPCClient(lis)
-	if err != nil {
-		t.Fatalf("Error setting up gRPC client: %v", err)
-	}
-
-	client := pb.NewEmailServiceClient(conn)
+func (suite *TestSuite) TestSendEmail_PlainOnly() {
+	client := pb.NewEmailServiceClient(suite.grpcConn)
 
 	// Send a test email.
 	emailRequest1 := &pb.EmailRequest{
@@ -309,28 +367,23 @@ func TestSendEmail_PlainOnly(t *testing.T) {
 	}
 
 	stream, err := client.SendEmail(context.Background())
-	if err != nil {
-		t.Fatalf("Error sending email: %v", err)
-	}
+	suite.NoError(err)
 
-	if err := stream.Send(emailRequest1); err != nil {
-		t.Fatalf("Error sending email request: %v", err)
-	}
+	err = stream.Send(emailRequest1)
+	suite.NoError(err)
 
 	response, err := stream.CloseAndRecv()
-	if err != nil {
-		t.Fatalf("Error receiving response: %v", err)
-	}
+	suite.NoError(err)
 
 	// Check that the email was sent successfully.
-	assert.True(t, response.Success)
-	assert.Equal(t, "Email sent successfully", response.Message)
+	suite.True(response.Success)
+	suite.Equal("Email sent successfully", response.Message)
 
 	// Verify that the email was sent correctly.
-	messages := mockServer.Messages()
+	messages := suite.emailServer.Messages()
 	message := last(messages)
 
-	assert.Equal(t, "MAIL FROM:<from@example.com>", message.MailfromRequest())
+	suite.Equal("MAIL FROM:<from@example.com>", message.MailfromRequest())
 
 	data := map[string]interface{}{
 		"from":    "from@example.com",
@@ -364,20 +417,12 @@ Content-Type: text/plain; charset=utf-8
 		panic(err)
 	}
 
-	assert.Equal(t, expectedMsg.String(), message.MsgRequest())
+	suite.Equal(expectedMsg.String(), message.MsgRequest())
 
 }
 
-func TestSendEmail_HtmlOnly(t *testing.T) {
-	mockServer, lis := setupMockServer()
-	defer mockServer.Stop()
-
-	conn, err := setupGRPCClient(lis)
-	if err != nil {
-		t.Fatalf("Error setting up gRPC client: %v", err)
-	}
-
-	client := pb.NewEmailServiceClient(conn)
+func (suite *TestSuite) TestSendEmail_HtmlOnly() {
+	client := pb.NewEmailServiceClient(suite.grpcConn)
 
 	// Send a test email.
 	emailRequest1 := &pb.EmailRequest{
@@ -392,28 +437,23 @@ func TestSendEmail_HtmlOnly(t *testing.T) {
 	}
 
 	stream, err := client.SendEmail(context.Background())
-	if err != nil {
-		t.Fatalf("Error sending email: %v", err)
-	}
+	suite.NoError(err)
 
-	if err := stream.Send(emailRequest1); err != nil {
-		t.Fatalf("Error sending email request: %v", err)
-	}
+	err = stream.Send(emailRequest1)
+	suite.NoError(err)
 
 	response, err := stream.CloseAndRecv()
-	if err != nil {
-		t.Fatalf("Error receiving response: %v", err)
-	}
+	suite.NoError(err)
 
 	// Check that the email was sent successfully.
-	assert.True(t, response.Success)
-	assert.Equal(t, "Email sent successfully", response.Message)
+	suite.True(response.Success)
+	suite.Equal("Email sent successfully", response.Message)
 
 	// Verify that the email was sent correctly.
-	messages := mockServer.Messages()
+	messages := suite.emailServer.Messages()
 	message := last(messages)
 
-	assert.Equal(t, "MAIL FROM:<from@example.com>", message.MailfromRequest())
+	suite.Equal("MAIL FROM:<from@example.com>", message.MailfromRequest())
 
 	data := map[string]interface{}{
 		"from":    "from@example.com",
@@ -447,6 +487,17 @@ Content-Type: text/html; charset=utf-8
 		panic(err)
 	}
 
-	assert.Equal(t, expectedMsg.String(), message.MsgRequest())
+	suite.Equal(expectedMsg.String(), message.MsgRequest())
 
+}
+
+func (suite *TestSuite) TestSendEmail_MissingEmailInfo() {
+	client := pb.NewEmailServiceClient(suite.grpcConn)
+
+	stream, err := client.SendEmail(context.Background())
+	suite.NoError(err)
+
+	_, err = stream.CloseAndRecv()
+	expected := status.Error(codes.InvalidArgument, "EmailInfo not found in stream")
+	suite.EqualError(err, expected.Error())
 }
