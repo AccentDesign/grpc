@@ -10,13 +10,15 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/accentdesign/grpc/core/healthcheck"
 	"github.com/accentdesign/grpc/services/auth/internal/migrate"
 	"github.com/accentdesign/grpc/services/auth/internal/repos"
-	pb "github.com/accentdesign/grpc/services/auth/pkg/api/auth"
+	authpb "github.com/accentdesign/grpc/services/auth/pkg/api/auth"
 	"github.com/accentdesign/grpc/services/auth/service"
 )
 
@@ -98,8 +100,12 @@ func main() {
 		grpc.UnaryInterceptor(errHandler),
 	)
 
-	// register the services
-	pb.RegisterAuthenticationServer(grpcServer, authService)
+	// register the auth services
+	authpb.RegisterAuthenticationServer(grpcServer, authService)
+
+	// register the health service
+	healthServer := healthcheck.NewHealthServer()
+	healthpb.RegisterHealthServer(grpcServer, healthServer)
 
 	// enable reflection
 	if *enableReflection {

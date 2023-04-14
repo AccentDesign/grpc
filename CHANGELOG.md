@@ -3,7 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+* Auth
+  * added health service.
+
 * Email
+  * added health service.
   * added service validation.
 
 ## [0.0.4]

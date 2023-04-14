@@ -9,11 +9,12 @@ import (
 	"os"
 	"strconv"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-
-	pb "github.com/accentdesign/grpc/services/email/pkg/api/email"
+	"github.com/accentdesign/grpc/core/healthcheck"
+	emailpb "github.com/accentdesign/grpc/services/email/pkg/api/email"
 	"github.com/accentdesign/grpc/services/email/service"
+	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 )
 
 var (
@@ -77,8 +78,12 @@ func main() {
 		log.Fatalf("failed to initialize email service: %v", err)
 	}
 
-	// register the services
-	pb.RegisterEmailServiceServer(grpcServer, emailService)
+	// register the email service
+	emailpb.RegisterEmailServiceServer(grpcServer, emailService)
+
+	// register the health service
+	healthServer := healthcheck.NewHealthServer()
+	healthpb.RegisterHealthServer(grpcServer, healthServer)
 
 	// enable reflection
 	if *enableReflection {
