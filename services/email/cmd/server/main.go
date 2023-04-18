@@ -31,6 +31,11 @@ var (
 func displayHelp() {
 	flag.PrintDefaults()
 	fmt.Println("Environment variables:")
+	fmt.Println("  SMTP_HOST - SMTP server host (e.g. smtp.sendgrid.net)")
+	fmt.Println("  SMTP_PORT - SMTP server port (e.g. 587)")
+	fmt.Println("  SMTP_USERNAME - SMTP server username (e.g. apikey)")
+	fmt.Println("  SMTP_PASSWORD - SMTP server password (e.g. my-sendgrid-key)")
+	fmt.Println("  SMTP_STARTTLS - SMTP server start TLS (e.g. t,1,true or f,0,false)")
 }
 
 func main() {
