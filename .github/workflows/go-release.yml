@@ -24,6 +24,8 @@ jobs:
           project_path: "./services/auth/cmd/server"
           binary_name: "auth-server"
           extra_files: LICENSE ./services/auth/README.md
+          pre_command: export CGO_ENABLED=0
+          ldflags: -extldflags -static
       - uses: wangyoucao577/go-release-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -34,3 +36,4 @@ jobs:
           binary_name: "email-server"
           extra_files: LICENSE ./services/email/README.md
           pre_command: export CGO_ENABLED=0
+          ldflags: -extldflags -static
