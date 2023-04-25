@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.7]
+
+Add CGO_ENABLED=0 pre-command auth
+
 ## [0.0.6]
 
 Add CGO_ENABLED=0 pre-command
