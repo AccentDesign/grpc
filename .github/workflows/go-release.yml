@@ -33,3 +33,4 @@ jobs:
           project_path: "./services/email/cmd/server"
           binary_name: "email-server"
           extra_files: LICENSE ./services/email/README.md
+          pre_command: export CGO_ENABLED=0
