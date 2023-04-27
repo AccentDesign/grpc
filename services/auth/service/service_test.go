@@ -78,7 +78,7 @@ func (suite *TestSuite) TestAuthService_BearerToken() {
 		request       *pb.BearerTokenRequest
 		expectedError error
 	}{
-		{"missing email", &pb.BearerTokenRequest{}, status.Error(codes.InvalidArgument, "email is required")},
+		{"missing email", &pb.BearerTokenRequest{}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"invalid email", &pb.BearerTokenRequest{Email: "invalid"}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"missing password", &pb.BearerTokenRequest{Email: user.Email}, status.Error(codes.InvalidArgument, "password is required")},
 		{"invalid password", &pb.BearerTokenRequest{Email: user.Email, Password: "invalid"}, status.Error(codes.InvalidArgument, "invalid credentials")},
@@ -205,7 +205,7 @@ func (suite *TestSuite) TestAuthService_Register() {
 		request       *pb.RegisterRequest
 		expectedError error
 	}{
-		{"missing email", &pb.RegisterRequest{}, status.Error(codes.InvalidArgument, "email is required")},
+		{"missing email", &pb.RegisterRequest{}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"invalid email", &pb.RegisterRequest{Email: "invalid"}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"missing first name", &pb.RegisterRequest{Email: "test@test.com"}, status.Error(codes.InvalidArgument, "first_name is required")},
 		{"missing last name", &pb.RegisterRequest{Email: "test@test.com", FirstName: "Some"}, status.Error(codes.InvalidArgument, "last_name is required")},
@@ -370,7 +370,7 @@ func (suite *TestSuite) TestAuthService_ResetPasswordToken() {
 		request       *pb.ResetPasswordTokenRequest
 		expectedError error
 	}{
-		{"missing email", &pb.ResetPasswordTokenRequest{}, status.Error(codes.InvalidArgument, "email is required")},
+		{"missing email", &pb.ResetPasswordTokenRequest{}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"invalid email", &pb.ResetPasswordTokenRequest{Email: "invalid"}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"unknown email", &pb.ResetPasswordTokenRequest{Email: "invalid@mail.com"}, status.Error(codes.NotFound, "user not found")},
 	}
@@ -700,7 +700,7 @@ func (suite *TestSuite) TestAuthService_VerifyUserToken() {
 		request       *pb.VerifyUserTokenRequest
 		expectedError error
 	}{
-		{"missing email", &pb.VerifyUserTokenRequest{}, status.Error(codes.InvalidArgument, "email is required")},
+		{"missing email", &pb.VerifyUserTokenRequest{}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"invalid email", &pb.VerifyUserTokenRequest{Email: "invalid"}, status.Error(codes.InvalidArgument, "invalid email format")},
 		{"unknown email", &pb.VerifyUserTokenRequest{Email: "unknown@mail.com"}, status.Error(codes.NotFound, "user not found")},
 	}

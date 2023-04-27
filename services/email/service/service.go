@@ -10,10 +10,10 @@ import (
 	"net/smtp"
 	"strings"
 
+	"github.com/asaskevich/govalidator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/accentdesign/grpc/core/validator"
 	"github.com/accentdesign/grpc/services/email/internal"
 	pb "github.com/accentdesign/grpc/services/email/pkg/api/email"
 )
@@ -62,7 +62,6 @@ func (s *EmailServer) SetBoundaryGenerator(boundaryGenerator internal.BoundaryGe
 func (s *EmailServer) SendEmail(stream pb.EmailService_SendEmailServer) error {
 	var emailInfo *pb.EmailInfo
 	var attachments []*pb.Attachment
-	v := validator.New()
 
 	for {
 		req, err := stream.Recv()
@@ -89,27 +88,27 @@ func (s *EmailServer) SendEmail(stream pb.EmailService_SendEmailServer) error {
 
 		switch payload := req.Payload.(type) {
 		case *pb.EmailRequest_EmailInfo:
-			if v.IsEmpty(payload.EmailInfo.GetFromAddress()) {
+			if govalidator.IsNull(payload.EmailInfo.GetFromAddress()) {
 				return status.Error(codes.InvalidArgument, "from_address is required")
 			}
-			if v.IsEmpty(payload.EmailInfo.GetToAddress()) {
+			if govalidator.IsNull(payload.EmailInfo.GetToAddress()) {
 				return status.Error(codes.InvalidArgument, "to_address is required")
 			}
-			if v.IsEmpty(payload.EmailInfo.GetSubject()) {
+			if govalidator.IsNull(payload.EmailInfo.GetSubject()) {
 				return status.Error(codes.InvalidArgument, "subject is required")
 			}
-			if v.IsEmpty(payload.EmailInfo.GetPlainText()) && v.IsEmpty(payload.EmailInfo.GetHtml()) {
+			if govalidator.IsNull(payload.EmailInfo.GetPlainText()) && govalidator.IsNull(payload.EmailInfo.GetHtml()) {
 				return status.Error(codes.InvalidArgument, "plain_text or html is required")
 			}
 			emailInfo = payload.EmailInfo
 		case *pb.EmailRequest_Attachment:
-			if v.IsEmpty(payload.Attachment.GetFilename()) {
+			if govalidator.IsNull(payload.Attachment.GetFilename()) {
 				return status.Error(codes.InvalidArgument, "filename is required")
 			}
 			if len(payload.Attachment.GetData()) == 0 {
 				return status.Error(codes.InvalidArgument, "data is required")
 			}
-			if v.IsEmpty(payload.Attachment.GetContentType()) {
+			if govalidator.IsNull(payload.Attachment.GetContentType()) {
 				return status.Error(codes.InvalidArgument, "content_type is required")
 			}
 			attachments = append(attachments, payload.Attachment)

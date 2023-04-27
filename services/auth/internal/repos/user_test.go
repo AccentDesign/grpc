@@ -57,7 +57,7 @@ func (suite *TestSuite) TestUserRepository_CreateUser_Validate() {
 	user, err := repo.CreateUser("", "password", "Some", "One")
 
 	suite.Error(err)
-	suite.Equal("email is required", err.Error())
+	suite.Equal("invalid email format", err.Error())
 	suite.Nil(user)
 }
 
@@ -238,5 +238,5 @@ func (suite *TestSuite) TestUserRepository_UpdateUser() {
 
 	err = repo.UpdateUser(user)
 	suite.Error(err)
-	suite.Equal("email is required", err.Error())
+	suite.Equal("invalid email format", err.Error())
 }

@@ -12,8 +12,8 @@ func (suite *TestSuite) TestUserModel_Validate() {
 		user          *models.User
 		expectedError error
 	}{
-		{"missing email", &models.User{}, errors.New("email is required")},
-		{"empty email", &models.User{Email: ""}, errors.New("email is required")},
+		{"missing email", &models.User{}, errors.New("invalid email format")},
+		{"empty email", &models.User{Email: ""}, errors.New("invalid email format")},
 		{"invalid email", &models.User{Email: "invalid"}, errors.New("invalid email format")},
 		{"missing first name", &models.User{Email: "test@example.com"}, errors.New("first_name is required")},
 		{"empty first name", &models.User{Email: "test@example.com", FirstName: ""}, errors.New("first_name is required")},

@@ -3,13 +3,12 @@ package models
 import (
 	"context"
 	"fmt"
+	"github.com/asaskevich/govalidator"
 	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-
-	"github.com/accentdesign/grpc/core/validator"
 )
 
 type UserValidateError struct {
@@ -67,12 +66,10 @@ func (u *User) AfterUpdate(tx *gorm.DB) (err error) {
 }
 
 func (u *User) SetPassword(password string) error {
-	v := validator.New()
-
-	if v.IsEmpty(password) {
+	if govalidator.IsNull(password) {
 		return &UserValidateError{"password is required"}
 	}
-	if !v.IsStringLength(password, 6, 72) {
+	if !govalidator.StringLength(password, "6", "72") {
 		return &UserValidateError{"password must be between 6 and 72 characters in length"}
 	}
 
@@ -87,18 +84,13 @@ func (u *User) SetPassword(password string) error {
 }
 
 func (u *User) Validate() error {
-	v := validator.New()
-
-	if v.IsEmpty(u.Email) {
-		return &UserValidateError{"email is required"}
-	}
-	if !v.Matches(u.Email, validator.EmailRX) {
+	if !govalidator.IsEmail(u.Email) {
 		return &UserValidateError{"invalid email format"}
 	}
-	if v.IsEmpty(u.FirstName) {
+	if govalidator.IsNull(u.FirstName) {
 		return &UserValidateError{"first_name is required"}
 	}
-	if v.IsEmpty(u.LastName) {
+	if govalidator.IsNull(u.LastName) {
 		return &UserValidateError{"last_name is required"}
 	}
 

@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+* Auth
+  * use govalidator.
+* Email
+  * use govalidator.
+
 ## [0.0.7]
 
 Add CGO_ENABLED=0 pre-command auth
