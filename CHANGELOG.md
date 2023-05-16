@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 * Auth
   * use govalidator.
+  * catch gorm.ErrDuplicatedKey in update user
 * Email
   * use govalidator.
 

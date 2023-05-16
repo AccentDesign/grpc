@@ -251,7 +251,12 @@ func (s *AuthService) UpdateUser(_ context.Context, in *pb.UpdateUserRequest) (*
 	}
 
 	if err := s.UserRepo.UpdateUser(user); err != nil {
-		return nil, ErrInternal(err)
+		switch {
+		case errors.Is(err, gorm.ErrDuplicatedKey):
+			return nil, ErrEmailAlreadyExists
+		default:
+			return nil, ErrInternal(err)
+		}
 	}
 
 	return s.userToResponse(user), nil
