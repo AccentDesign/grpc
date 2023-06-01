@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.8]
+
 * Auth
   * use govalidator.
   * catch gorm.ErrDuplicatedKey in update user
