@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.9]
+
+* bump go to 1.20.6
+* update all dependencies
+
 ## [0.0.8]
 
 * Auth
