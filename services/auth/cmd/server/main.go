@@ -50,7 +50,7 @@ func main() {
 	}
 
 	// connect to the database
-	database, err := gorm.Open(postgres.Open(dbDns), &gorm.Config{})
+	database, err := gorm.Open(postgres.Open(dbDns), &gorm.Config{TranslateError: true})
 	if err != nil {
 		log.Fatalf("failed to connect to the database: %v", err)
 	}

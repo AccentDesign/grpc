@@ -40,7 +40,7 @@ func SetupDockerDB() (string, *gorm.DB, func()) {
 
 	conn := fmt.Sprintf("postgresql://test:test@localhost:%s/test?sslmode=disable", resource.GetPort("5432/tcp"))
 	dialector := postgres.Open(conn)
-	config := &gorm.Config{}
+	config := &gorm.Config{TranslateError: true}
 
 	if err := pool.Retry(func() error {
 		var err error
