@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.0.11]
 
+* bump go to 1.21.1
 * update all dependencies
 
 ## [0.0.10]
