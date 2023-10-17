@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.12]
+
+* bump go to 1.21.3
+* update all dependencies
+
 ## [0.0.11]
 
 * bump go to 1.21.1
