@@ -17,20 +17,24 @@ A list of all the service built in this library:
 
 Some useful external tools:
 
-#### FastAPI Boilerplate
+<details>
+  <summary>FastAPI Boilerplate</summary>
 
-A boilerplate written in Python, Pydantic and SQLAlchemy using the following services:
-
+A boilerplate written in Python, Pydantic and SQLAlchemy using the following services
 * Auth
 * Email
 
 https://github.com/stuartaccent/fastapi-boilerplate
+</details>
 
-#### gRPC Web UI
+<details>
+  <summary>gRPC Web UI</summary>
 
-Connect to a running gRPC service that has reflection enabled.
-
-    docker run \
-    --publish 8080:8080 \
-    fullstorydev/grpcui:latest \
-    -bind 0.0.0.0 -port 8080 -plaintext <host-ip>:50051
+Connect to a running gRPC service that has reflection enabled
+```bash
+docker run \
+--publish 8080:8080 \
+fullstorydev/grpcui:latest \
+-bind 0.0.0.0 -port 8080 -plaintext <host-ip>:50051
+```
+</details>
