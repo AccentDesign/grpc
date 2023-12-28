@@ -35,6 +35,6 @@ Connect to a running gRPC service that has reflection enabled
 docker run \
 --publish 8080:8080 \
 fullstorydev/grpcui:latest \
--bind 0.0.0.0 -port 8080 -plaintext <host-ip>:50051
+-bind 0.0.0.0 -port 8080 -plaintext host.docker.internal:50051
 ```
 </details>
