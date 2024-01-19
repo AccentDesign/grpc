@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.16]
+
 * bump go to 1.21.6
 * update all dependencies
 * remove nested go.mod's
