@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	smtpmock "github.com/mocktools/go-smtp-mock/v2"
 	"github.com/stretchr/testify/suite"
@@ -216,6 +217,9 @@ func (suite *TestSuite) TestSendEmail_WithAttachments() {
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
 
+	// https://github.com/mocktools/go-smtp-mock/issues/181
+	time.Sleep(time.Millisecond)
+
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
 	message := last(messages)
@@ -303,6 +307,9 @@ func (suite *TestSuite) TestSendEmail_WithoutAttachments() {
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
 
+	// https://github.com/mocktools/go-smtp-mock/issues/181
+	time.Sleep(time.Millisecond)
+
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
 	message := last(messages)
@@ -379,6 +386,9 @@ func (suite *TestSuite) TestSendEmail_PlainOnly() {
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
 
+	// https://github.com/mocktools/go-smtp-mock/issues/181
+	time.Sleep(time.Millisecond)
+
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
 	message := last(messages)
@@ -448,6 +458,9 @@ func (suite *TestSuite) TestSendEmail_HtmlOnly() {
 	// Check that the email was sent successfully.
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
+
+	// https://github.com/mocktools/go-smtp-mock/issues/181
+	time.Sleep(time.Millisecond)
 
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
