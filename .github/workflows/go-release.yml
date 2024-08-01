@@ -22,7 +22,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: "https://dl.google.com/go/go1.22.4.linux-amd64.tar.gz"
+          goversion: "https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz"
           project_path: "./services/auth/cmd/server"
           binary_name: "auth-server"
           extra_files: LICENSE ./services/auth/README.md
@@ -33,7 +33,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: "https://dl.google.com/go/go1.22.4.linux-amd64.tar.gz"
+          goversion: "https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz"
           project_path: "./services/email/cmd/server"
           binary_name: "email-server"
           extra_files: LICENSE ./services/email/README.md
