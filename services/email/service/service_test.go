@@ -98,6 +98,20 @@ func TestTestSuite(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }
 
+func (suite *TestSuite) waitForMessages() {
+	// https://github.com/mocktools/go-smtp-mock/issues/181
+	start := time.Now()
+	for {
+		if time.Since(start) > (5 * time.Second) {
+			suite.Fail("Timeout waiting for messages")
+		}
+		if len(suite.emailServer.Messages()) > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func (suite *TestSuite) TestSendEmail_Validity() {
 	client := pb.NewEmailServiceClient(suite.grpcConn)
 
@@ -217,8 +231,7 @@ func (suite *TestSuite) TestSendEmail_WithAttachments() {
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
 
-	// https://github.com/mocktools/go-smtp-mock/issues/181
-	time.Sleep(time.Millisecond)
+	suite.waitForMessages()
 
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
@@ -307,8 +320,7 @@ func (suite *TestSuite) TestSendEmail_WithoutAttachments() {
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
 
-	// https://github.com/mocktools/go-smtp-mock/issues/181
-	time.Sleep(time.Millisecond)
+	suite.waitForMessages()
 
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
@@ -386,8 +398,7 @@ func (suite *TestSuite) TestSendEmail_PlainOnly() {
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
 
-	// https://github.com/mocktools/go-smtp-mock/issues/181
-	time.Sleep(time.Millisecond)
+	suite.waitForMessages()
 
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
@@ -459,8 +470,7 @@ func (suite *TestSuite) TestSendEmail_HtmlOnly() {
 	suite.True(response.Success)
 	suite.Equal("Email sent successfully", response.Message)
 
-	// https://github.com/mocktools/go-smtp-mock/issues/181
-	time.Sleep(time.Millisecond)
+	suite.waitForMessages()
 
 	// Verify that the email was sent correctly.
 	messages := suite.emailServer.Messages()
