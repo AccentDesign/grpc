@@ -23,6 +23,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_READONLY_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_READONLY_TOKEN }}
+
       - name: Install dependencies
         run: |
           go mod tidy
